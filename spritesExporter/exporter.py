@@ -3,7 +3,6 @@ The backend that handles exporting spritesheet.
 """
 
 from krita import Krita, Document, Node, InfoObject
-from PyQt5.QtCore import QRect, QByteArray
 
 from dataclasses import dataclass
 from collections.abc import Iterable
@@ -12,7 +11,7 @@ from math import sqrt, ceil
 import json
 from pathlib import Path
 
-from .utils import KritaVersion
+from .utils import KritaVersion, QtCore
 
 DEFAULT_TIME = -1
 DEFAULT_SPACE = 0
@@ -182,7 +181,7 @@ class Exporter:
         w = src.width() - x + self.pad.right
         h = src.height() - y + self.pad.bottom
 
-        pixel_set: Optional[set[QByteArray]] = set() if self.unique_frames else None
+        pixel_set: Optional[set[QtCore.QByteArray]] = set() if self.unique_frames else None
 
         if self.layers_as_animation:
             paint_layers = self.api_version.recurse_children(
@@ -256,7 +255,7 @@ class Exporter:
                     dest.xRes(),
                     dest.yRes(),
                     InfoObject(),
-                    QRect(0, 0, width, height),
+                    QtCore.QRect(0, 0, width, height),
                 )
 
             # Layers are ordered by when they were added, so using `i` is fine
