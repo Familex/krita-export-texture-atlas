@@ -5,15 +5,13 @@ Connects the backend and the frontend.
 from krita import Krita
 from builtins import i18n
 
-from PyQt5.QtWidgets import QLineEdit, QFileDialog
-
 from functools import partial
 from typing import Optional
 from pathlib import Path
 
 from .exporter import Exporter
 from .ui import Dialog
-from .utils import KritaVersion
+from .utils import KritaVersion, QtWidgets
 
 
 def _current_directory() -> Optional[Path]:
@@ -22,7 +20,7 @@ def _current_directory() -> Optional[Path]:
 
 
 def _pick_directory_dialog(directory: str) -> str:
-    file_dialog = QFileDialog()
+    file_dialog = QtWidgets.QFileDialog()
     file_dialog.setWindowTitle(i18n("Choose Export Directory"))
     file_dialog.setSizeGripEnabled(True)
 
@@ -32,7 +30,7 @@ def _pick_directory_dialog(directory: str) -> str:
     return file_dialog.getExistingDirectory()
 
 
-def _change_dir(input: QLineEdit):
+def _change_dir(input: QtWidgets.QLineEdit):
     # Grab the output path on directory changed
     path = _pick_directory_dialog(input.text())
     if path != "":

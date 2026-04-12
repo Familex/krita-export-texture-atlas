@@ -2,8 +2,23 @@
 Miscellaneous utilities.
 """
 
-from krita import Node
+from krita import Node, qVersion
 from builtins import Application
+
+
+KRITA_QT_VERSION = int(qVersion().split(".")[0])
+
+# Try to import the correct Qt module
+try:
+    if KRITA_QT_VERSION == 6:
+        raise ImportError
+    import PyQt6 as PyQt
+except ImportError:
+    import PyQt5 as PyQt
+
+# Reexport relevant Qt submodules as attributes/values
+QtCore = PyQt.QtCore
+QtWidgets = PyQt.QtWidgets
 
 
 def _recurse_children(node: Node, result: list[Node]) -> list[Node]:
