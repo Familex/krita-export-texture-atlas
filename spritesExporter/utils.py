@@ -10,7 +10,7 @@ KRITA_QT_VERSION = int(qVersion().split(".")[0])
 
 # Try to import the correct Qt module
 try:
-    if KRITA_QT_VERSION == 6:
+    if KRITA_QT_VERSION != 6:
         raise ImportError
     import PyQt6 as PyQt
 except ImportError:
