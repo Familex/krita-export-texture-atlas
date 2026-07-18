@@ -97,6 +97,8 @@ class Controller:
             self.dialog.preview.show_atlas(
                 atlas,
                 f"{size['w']} \u00d7 {size['h']} px, {len(data['frames'])} frames",
+                data["frames"],
+                (size["w"], size["h"]),
             )
 
     def export(self):

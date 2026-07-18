@@ -139,16 +139,19 @@ class AtlasPreview(QW.QGroupBox):
         self.setStyleSheet("QGroupBox::title { subcontrol-position: top center; }")
 
         self._pixmap: Optional[QG.QPixmap] = None
+        self._atlas_size: tuple[int, int] = (0, 0)
+        self._frames: dict = {}
 
         self.image = QW.QLabel()
         self.image.setAlignment(QC.Qt.AlignmentFlag.AlignCenter)
         self.image.setWordWrap(True)
         self.image.setStyleSheet("background-color: #606060; color: #f0f0f0;")
         self.image.setMinimumSize(240, 240)
-        # Ignore the pixmap's size so the label can freely shrink and grow
         self.image.setSizePolicy(
             QW.QSizePolicy.Policy.Ignored, QW.QSizePolicy.Policy.Ignored
         )
+        self.image.setMouseTracking(True)
+        self.image.installEventFilter(self)
 
         self.info = QW.QLabel()
         self.info.setAlignment(QC.Qt.AlignmentFlag.AlignCenter)
@@ -163,11 +166,18 @@ class AtlasPreview(QW.QGroupBox):
         layout.addWidget(self.info)
         layout.addWidget(self.refresh)
 
-    def show_atlas(self, image: QG.QImage, info: str):
-        # Draw a 2px outline along the image's edges so the atlas dimensions
-        # are always visible against the preview background
+    def show_atlas(
+        self,
+        image: QG.QImage,
+        info: str,
+        frames: dict,
+        atlas_size: tuple[int, int],
+    ):
+        self._atlas_size = atlas_size
+        self._frames = frames
+
         pen = QG.QPen(QG.QColor(0xB0, 0xB0, 0xB0), 2)
-        pen.setCosmetic(True)  # keep the stroke width independent of scaling
+        pen.setCosmetic(True)
         bordered = image.copy()
         painter = QG.QPainter(bordered)
         painter.setCompositionMode(
@@ -184,9 +194,57 @@ class AtlasPreview(QW.QGroupBox):
 
     def show_message(self, message: str):
         self._pixmap = None
+        self._atlas_size = (0, 0)
+        self._frames = {}
         self.image.setPixmap(QG.QPixmap())
         self.image.setText(message)
         self.info.setText("")
+
+    def eventFilter(self, obj, event):
+        if obj is self.image and event.type() == QC.QEvent.Type.MouseMove:
+            canvas = self._atlas_coords(event.pos())
+            if canvas:
+                frame = self._frame_at(*canvas)
+                if frame:
+                    QW.QToolTip.showText(event.globalPosition().toPoint(), frame, self.image)
+                    return True
+            QW.QToolTip.hideText()
+        return super().eventFilter(obj, event)
+
+    def _atlas_coords(self, pos: QC.QPoint) -> Optional[tuple[int, int]]:
+        """Maps a label QPoint back to atlas (x, y), or None if outside."""
+
+        if self._atlas_size[0] <= 0:
+            return None
+
+        displayed = self.image.pixmap()
+        if displayed is None or displayed.width() <= 0:
+            return None
+
+        aw, ah = self._atlas_size
+        pw, ph = displayed.width(), displayed.height()
+        lw, lh = self.image.width(), self.image.height()
+
+        # The pixmap is centred by AlignCenter
+        ox = (lw - pw) / 2
+        oy = (lh - ph) / 2
+
+        x = pos.x() - ox
+        y = pos.y() - oy
+
+        if x < 0 or y < 0 or x >= pw or y >= ph:
+            return None
+
+        return int(x * aw / pw), int(y * ah / ph)
+
+    def _frame_at(self, ax: int, ay: int) -> Optional[str]:
+        for key, frame in self._frames.items():
+            if (
+                frame["x"] <= ax < frame["x"] + frame["w"]
+                and frame["y"] <= ay < frame["y"] + frame["h"]
+            ):
+                return key
+        return None
 
     def _update_scaled(self):
         if self._pixmap is None:
