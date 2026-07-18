@@ -8,7 +8,7 @@ from builtins import Scripter
 from .controller import Controller
 
 
-SPRITESHEET_EXPORTER_VERSION = "0.3.2"
+SPRITES_EXPORTER_VERSION = "0.4.0"
 
 
 class SpritesExporter(Extension):
@@ -25,17 +25,19 @@ class SpritesExporter(Extension):
 
     def createActions(self, window):
         """
-        Adds a menu item to export a spritesheet.
+        Adds a menu item to export a texture atlas.
         """
 
         # parameter 1 = the name Krita uses to identify the action
         # parameter 2 = this script's menu entry name
         # parameter 3 = location of menu entry
         export_action = window.createAction(
-            "pykrita_spritesheetExporter", "Export as Spritesheet", "tools/scripts"
+            "pykrita_spritesExporter", "Export as Texture Atlas", "tools/scripts"
         )
 
-        export_action.setToolTip("Export animation in timeline as spritesheet")
+        export_action.setToolTip(
+            "Export layers as a packed texture atlas with a JSON scene description"
+        )
         export_action.triggered.connect(self._show_dialog)
 
     def _show_dialog(self) -> None:
