@@ -4,14 +4,14 @@ Builds the scene graph from the Krita layer tree and extracts sprite images.
 Group layers become objects that preserve the document hierarchy, and every
 other visible layer with content becomes a leaf object with a packed frame.
 
-Position and origin semantics:
-- An object's `origin` is its pivot point, in pixels, relative to the top-left
+Position and pivot semantics:
+- An object's `pivot` is its anchor point, in pixels, relative to the top-left
   corner of its own bounds (and thus of its atlas frame). It comes from an
   optional child layer named "__pivot" (a single painted pixel) and is omitted
-  when there is no pivot, in which case it defaults to (0, 0).
-- An object's `position` is where its origin point lies relative to its
-  parent's origin point (or to the document's top-left corner for top-level
-  objects). Placing each frame so its origin lands on the accumulated
+  when there is no pivot layer, in which case it defaults to (0, 0).
+- An object's `position` is where its pivot point lies relative to its
+  parent's pivot point (or to the document's top-left corner for top-level
+  objects). Placing each frame so its pivot lands on the accumulated
   position reproduces the original document exactly.
 """
 
@@ -42,15 +42,15 @@ class SceneObject:
 
     name: str
     z: int
-    origin_canvas: tuple[int, int]
-    origin_local: Optional[tuple[int, int]] = None
+    pivot_canvas: tuple[int, int]
+    pivot_local: Optional[tuple[int, int]] = None
     frame: Optional[str] = None
     children: list["SceneObject"] = field(default_factory=list)
 
-    def to_dict(self, parent_origin: tuple[int, int]) -> dict:
+    def to_dict(self, parent_pivot: tuple[int, int]) -> dict:
         """
         Serializes this object (and its children) for the JSON scene
-        description, with positions relative to the parent's origin point.
+        description, with positions relative to the parent's pivot point.
         """
 
         data = {
@@ -63,11 +63,11 @@ class SceneObject:
 
         if self.frame is not None:
             data["frame"] = self.frame
-        if self.origin_local is not None:
-            data["origin"] = {"x": self.origin_local[0], "y": self.origin_local[1]}
+        if self.pivot_local is not None:
+            data["pivot"] = {"x": self.pivot_local[0], "y": self.pivot_local[1]}
 
         data["z"] = self.z
-        data["children"] = [child.to_dict(self.origin_canvas) for child in self.children]
+        data["children"] = [child.to_dict(self.pivot_canvas) for child in self.children]
         return data
 
 
@@ -130,8 +130,8 @@ class SceneBuilder:
 
             pivot = self._find_pivot(node)
             if pivot is not None:
-                obj.origin_canvas = pivot
-                obj.origin_local = (pivot[0] - bounds.x(), pivot[1] - bounds.y())
+                obj.pivot_canvas = pivot
+                obj.pivot_local = (pivot[0] - bounds.x(), pivot[1] - bounds.y())
 
             return obj
 

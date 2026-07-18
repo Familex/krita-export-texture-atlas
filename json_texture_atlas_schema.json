@@ -20,13 +20,16 @@
       "properties": {
         "version": {
           "type": "integer",
+          "description": "Format version.",
           "minimum": 1
         },
         "image": {
-          "type": "string"
+          "type": "string",
+          "description": "Filename of managed texture atlas."
         },
         "atlas_size": {
           "type": "object",
+          "description": "Dimentions of managed texture atlas.",
           "additionalProperties": false,
           "required": [
             "w",
@@ -117,8 +120,9 @@
             }
           }
         },
-        "origin": {
+        "pivot": {
           "type": "object",
+          "description": "Explicit pivot point of object",
           "additionalProperties": false,
           "required": [
             "x",
@@ -134,7 +138,8 @@
           }
         },
         "z": {
-          "type": "integer"
+          "type": "integer",
+          "description": "Z-order value in scope of parent object"
         },
         "children": {
           "type": "array",

@@ -1,63 +1,26 @@
 # SpritesExporter
 
-A Krita plugin to export animations as spritesheets.
+A Krita plugin that exports all layer groups as a packed texture atlas and a JSON scene description that preserves the layer hierarchy.
 
-<img
-  src="./assets/mimvoid-spritesheet.png"
-  title="Art by mimvoid. An example spritesheet exported with Spritesheet Exporter."
-  width="600"
-/>
+JSON follows [json_texture_atlas_schema.json](./json_texture_atlas_schema.json) schema.
 
 > [!NOTE]
-> This plugin can only support animation timelines on Krita version **4.2.0** or later,
-> as that was when the Python animation API was added. Alternatively, you may export
-> layers as animation frames.
+> This plugin requires Krita version **6.0** or later.
 
-## Features
+## Additional features
 
-- Export only unique frames
-- Choose whether to place the sprites horizontally or vertically
-- Define the number of columns if placed horizontally, and rows if placed vertically
-  - By default, the sprites are fit into a square
-- Write a JSON texture atlas
-- Export individual frames/sprites as an image sequence
-- Define the first frame, last frame, and frame step
-- Pad or clip sprites
-
-### Tips and Tricks
-
-- **To import a spritesheet** to the animation timeline of a new layer:
-  - With the spritesheet open, go to `Image > Image Split`
-  - Then, in a new file of the same dimensions as one frame, use `File > Import Animation Frames`
-- **To merge a spritesheet**:
-  - Use `File > Import Animation Frames` to add new sprites
-  - Then use `Tools > Scripts > Export as Spritesheet` to export the old and new sprites
+- Custom pivot points via child layers named "__pivot" containing one pixel at the object pivot point.
+- Identical sprites are deduplicated.
+- Layer and group opacity are baked into the exported pixels.
+- Documents in any color space are converted to 8-bit RGBA on the fly (the original document is never modified).
+- Layers to be skipped: invisible, with no explorable content, named "__pivot", filter layers.
 
 ## Installation
 
-- **Download the plugin** using the green "Code" button on this page, then click "Download ZIP"
-- **Import the plugin into Krita** using one of the following:
-  - Open Krita
-    - Go to `Tools > Scripts > Import Python Plugin`
-    - Select the downloaded ZIP file
-  - Extract the ZIP file
-    - Find `pykrita` in Krita's resources folder
-      - The resources location can be found in `Settings > Configure Krita...`, then
-        `General > Resources`
-      - Alternatively, you can open the resources folder through
-        `Settings > Manage Resources > Open Resources Folder`
-    - Move `spritesExporter.desktop` and the `spritesExporter` folder into `pykrita`
-- **Restart Krita** if it was open
-- **Activate the plugin**
-  - Go to `Settings > Configure Krita > Python Plugin Manager`
-  - Check `Sprites Exporter`
-- **Restart Krita**
-- You can now use it through `Tools > Scripts > Export as Spritesheet`!
+1. Go to `Tools > Scripts > Import Python Plugin from Web`, insert the URL to this repo, and restart Krita.
+1. Check if the plugin is enabled in `Settings > Configure Krita > Python Plugin Manager`.
+1. Plugin controls will be available in `Tools > Scripts > Export as Texture Atlas`.
 
-Check [Manual.html](./spritesExporter/Manual.html) for more information.
+## Acknowledgments
 
-## Special Thanks
-
-- [Falano](https://github.com/Falano) and
-  [kritaSpritesheetManager](https://github.com/Falano/kritaSpritesheetManager)
-  for making the wonderful plugin this fork is based on!
+- The plugin is based on [https://github.com/mimvoid/spritesExporter](https://github.com/mimvoid/spritesExporter), which was based on [https://github.com/Falano/kritaSpritesheetManager](https://github.com/Falano/kritaSpritesheetManager).
