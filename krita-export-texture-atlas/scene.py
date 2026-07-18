@@ -43,6 +43,23 @@ def is_exportable(node: Node) -> bool:
     )
 
 
+def _visual_bounds(node: Node, device_bounds: QtCore.QRect) -> QtCore.QRect:
+    """
+    Maps the node's device bounds through any direct transform-mask children,
+    returning the region that the node actually occupies on the canvas.
+    """
+
+    transform = QtGui.QTransform()
+    for child in node.childNodes():
+        if child.type() == "transformmask" and child.visible():
+            transform *= child.finalAffineTransform()
+
+    if transform.isIdentity():
+        return device_bounds
+
+    return transform.mapRect(device_bounds)
+
+
 @dataclass
 class Sprite:
     """An extracted image to pack, identified by its frame key."""
@@ -148,7 +165,7 @@ class SceneBuilder:
         name = node.name()
         node_type = node.type()
 
-        bounds = node.bounds()
+        bounds = _visual_bounds(node, node.bounds())
         if self._clip_rect is not None:
             bounds = bounds.intersected(self._clip_rect)
 
