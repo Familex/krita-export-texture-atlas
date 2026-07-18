@@ -1,7 +1,8 @@
 [Desktop Entry]
 Type=Service
 ServiceTypes=Krita/PythonPlugin
-X-KDE-Library=spritesExporter
+X-KDE-Library=krita-export-texture-atlas
 X-Python-2-Compatible=false
-Name=Sprites Exporter
+X-Krita-Manual=../README.md
+Name=Export Texture Atlas
 Comment=Exports documents as packed texture atlases with a JSON scene description
