@@ -1,4 +1,6 @@
-# SpritesExporter
+<h1 align='center'>
+  Krita Export Texture Atlas
+</h1>
 
 A Krita plugin that exports all layer groups as a packed texture atlas and a JSON scene description that preserves the layer hierarchy.
 

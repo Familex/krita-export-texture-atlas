@@ -1,1 +1,1 @@
-from .sprites_exporter import *
+from .plugin import *

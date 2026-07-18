@@ -1,5 +1,5 @@
 """
-Connects everything in the Sprites Exporter plugin to be accessed through Krita.
+Connects everything in the plugin to be accessed through Krita.
 """
 
 from krita import Krita, Extension
@@ -8,10 +8,7 @@ from builtins import Scripter
 from .controller import Controller
 
 
-SPRITES_EXPORTER_VERSION = "0.4.0"
-
-
-class SpritesExporter(Extension):
+class KritaExportTextureAtlas(Extension):
     def __init__(self, parent):
         """
         Always initialise the superclass.
@@ -32,7 +29,7 @@ class SpritesExporter(Extension):
         # parameter 2 = this script's menu entry name
         # parameter 3 = location of menu entry
         export_action = window.createAction(
-            "pykrita_spritesExporter", "Export as Texture Atlas", "tools/scripts"
+            "pykrita_export_texture_atlas", "Export as Texture Atlas", "tools/scripts"
         )
 
         export_action.setToolTip(
@@ -49,4 +46,4 @@ class SpritesExporter(Extension):
         self._controller.show_dialog()
 
 
-Scripter.addExtension(SpritesExporter(Krita.instance()))
+Scripter.addExtension(KritaExportTextureAtlas(Krita.instance()))
