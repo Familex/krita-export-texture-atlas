@@ -27,24 +27,27 @@ class Exporter:
     spacing: int
     power_of_two: bool
     clip_to_canvas: bool
+    excluded_top_level: frozenset[str] = frozenset()
 
-    def export(self) -> tuple[Path, Path]:
+    def __post_init__(self):
+        if self.export_path.suffix.lower() != ".png":
+            self.export_path = self.export_path.with_suffix(
+                self.export_path.suffix + ".png"
+            )
+
+    def build(self) -> tuple[QtGui.QImage, dict]:
         """
-        Exports the active document. Returns the written (image, json) paths.
+        Builds the packed atlas image and the JSON scene data in memory,
+        without writing any files. Used for both previewing and exporting.
         """
 
         doc = Krita.instance().activeDocument()
         if doc is None:
             raise ExportError("No active document. Open a document to export.")
 
-        if self.export_path.suffix.lower() != ".png":
-            self.export_path = self.export_path.with_suffix(
-                self.export_path.suffix + ".png"
-            )
-
         source, temp = _rgba_u8_source(doc)
         try:
-            builder = SceneBuilder(source, self.clip_to_canvas)
+            builder = SceneBuilder(source, self.clip_to_canvas, self.excluded_top_level)
             objects = builder.build()
 
             if not builder.sprites:
@@ -60,10 +63,6 @@ class Exporter:
 
             atlas = _render_atlas(builder.sprites, placements, atlas_w, atlas_h)
 
-            self.export_path.parent.mkdir(parents=True, exist_ok=True)
-            if not atlas.save(str(self.export_path), "PNG"):
-                raise ExportError(f"Could not save the atlas image to {self.export_path}")
-
             data = {
                 "meta": {
                     "version": SCHEMA_VERSION,
@@ -77,14 +76,27 @@ class Exporter:
                 "objects": [obj.to_dict((0, 0)) for obj in objects],
             }
 
-            json_path = self.export_path.with_suffix(".json")
-            with json_path.open("w", encoding="utf-8") as file:
-                json.dump(data, file, indent=2, ensure_ascii=False)
-
-            return self.export_path, json_path
+            return atlas, data
         finally:
             if temp is not None:
                 temp.close()
+
+    def export(self) -> tuple[Path, Path]:
+        """
+        Exports the active document. Returns the written (image, json) paths.
+        """
+
+        atlas, data = self.build()
+
+        self.export_path.parent.mkdir(parents=True, exist_ok=True)
+        if not atlas.save(str(self.export_path), "PNG"):
+            raise ExportError(f"Could not save the atlas image to {self.export_path}")
+
+        json_path = self.export_path.with_suffix(".json")
+        with json_path.open("w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2, ensure_ascii=False)
+
+        return self.export_path, json_path
 
 
 def _rgba_u8_source(doc: Document) -> tuple[Document, Optional[Document]]:

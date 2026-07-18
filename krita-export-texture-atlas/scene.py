@@ -28,6 +28,21 @@ PIVOT_LAYER_NAME = "__pivot"
 _SKIPPED_TYPES = {"filterlayer"}
 
 
+def node_uid(node: Node) -> str:
+    """A stable identifier for a node within the document."""
+    return node.uniqueId().toString()
+
+
+def is_exportable(node: Node) -> bool:
+    """Whether the node can appear in the export at all."""
+    return (
+        node.visible()
+        and node.name() != PIVOT_LAYER_NAME
+        and node.type() not in _SKIPPED_TYPES
+        and not node.type().endswith("mask")
+    )
+
+
 @dataclass
 class Sprite:
     """An extracted image to pack, identified by its frame key."""
@@ -56,8 +71,8 @@ class SceneObject:
         data = {
             "name": self.name,
             "position": {
-                "x": self.origin_canvas[0] - parent_origin[0],
-                "y": self.origin_canvas[1] - parent_origin[1],
+                "x": self.pivot_canvas[0] - parent_pivot[0],
+                "y": self.pivot_canvas[1] - parent_pivot[1],
             },
         }
 
@@ -78,19 +93,39 @@ class SceneBuilder:
     a single frame.
     """
 
-    def __init__(self, doc: Document, clip_to_canvas: bool = False):
+    def __init__(
+        self,
+        doc: Document,
+        clip_to_canvas: bool = False,
+        excluded_top_level: frozenset[str] = frozenset(),
+    ):
         self._clip_rect = (
             QtCore.QRect(0, 0, doc.width(), doc.height()) if clip_to_canvas else None
         )
         self._root = doc.rootNode()
+        self._excluded = excluded_top_level
 
         self.sprites: list[Sprite] = []
         self._frame_keys: set[str] = set()
         self._dedup: dict[tuple, str] = {}
 
     def build(self) -> list[SceneObject]:
-        """Builds and returns the list of top-level scene objects."""
-        return self._build_children(self._root, (), 1.0)
+        """
+        Builds and returns the list of top-level scene objects, leaving out
+        the excluded ones.
+        """
+
+        objects = []
+
+        for child in self._root.childNodes():
+            if node_uid(child) in self._excluded:
+                continue
+
+            obj = self._build_object(child, (), len(objects), 1.0)
+            if obj is not None:
+                objects.append(obj)
+
+        return objects
 
     def _build_children(
         self, parent: Node, path: tuple[str, ...], opacity: float
@@ -107,13 +142,11 @@ class SceneBuilder:
     def _build_object(
         self, node: Node, path: tuple[str, ...], z: int, opacity: float
     ) -> Optional[SceneObject]:
-        name = node.name()
-        if name == PIVOT_LAYER_NAME or not node.visible():
+        if not is_exportable(node):
             return None
 
+        name = node.name()
         node_type = node.type()
-        if node_type in _SKIPPED_TYPES or node_type.endswith("mask"):
-            return None
 
         bounds = node.bounds()
         if self._clip_rect is not None:
