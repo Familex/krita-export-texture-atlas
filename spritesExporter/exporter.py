@@ -199,7 +199,7 @@ class Exporter:
                     pixel_set.add(pixel_data)
 
                 new_layer = dest.createNode(str(i), "paintlayer")
-                new_layer.setPixelData(0, 0, w, h, pixel_data)
+                new_layer.setPixelData(pixel_data, 0, 0, w, h)
                 root.addChildNode(new_layer, None)
         else:
             if self.frames.end == DEFAULT_TIME or self.frames.start == DEFAULT_TIME:
