@@ -21,7 +21,10 @@ from PyQt6 import QtCore, QtGui
 from dataclasses import dataclass, field
 from typing import Optional
 
-PIVOT_LAYER_NAME = "__pivot"
+_PIVOT_LAYER_NAME = "__pivot"
+
+# Layers whose names start it are hidden layers
+_HIDDEN_PREFIX = "__"
 
 # Filter (adjustment) layers only make sense composited with what is below
 # them, so they cannot be exported as standalone sprites.
@@ -37,7 +40,7 @@ def is_exportable(node: Node) -> bool:
     """Whether the node can appear in the export at all."""
     return (
         node.visible()
-        and node.name() != PIVOT_LAYER_NAME
+        and not node.name().startswith(_HIDDEN_PREFIX)
         and node.type() not in _SKIPPED_TYPES
         and not node.type().endswith("mask")
     )
@@ -255,7 +258,7 @@ class SceneBuilder:
         """
 
         for child in group.childNodes():
-            if child.name() != PIVOT_LAYER_NAME:
+            if child.name() != _PIVOT_LAYER_NAME:
                 continue
 
             bounds = child.bounds()

@@ -10,10 +10,11 @@ JSON follows [json_texture_atlas_schema.json](./json_texture_atlas_schema.json) 
 ## Additional features
 
 - Custom pivot points via child layers named "__pivot" containing one pixel at the object pivot point.
+- Layers with names starting with "__" (double underscore) are hidden, use this permanently hide layers from export.
 - Identical sprites are deduplicated.
 - Layer and group opacity are baked into the exported pixels.
 - Documents in any color space are converted to 8-bit RGBA on the fly (the original document is never modified).
-- Layers to be skipped: invisible, with no explorable content, named "__pivot", filter layers.
+- Layers to be skipped: invisible, with no explorable content, names starting with "__", filter layers, and all mask types (transformmask, etc.).
 
 ## Installation
 
