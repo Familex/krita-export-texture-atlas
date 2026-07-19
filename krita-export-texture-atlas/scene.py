@@ -49,15 +49,36 @@ def _visual_bounds(node: Node, device_bounds: QtCore.QRect) -> QtCore.QRect:
     returning the region that the node actually occupies on the canvas.
     """
 
-    transform = QtGui.QTransform()
-    for child in node.childNodes():
-        if child.type() == "transformmask" and child.visible():
-            transform *= child.finalAffineTransform()
+    transform = _node_mask_transform(node)
 
     if transform.isIdentity():
         return device_bounds
 
     return transform.mapRect(device_bounds)
+
+
+def _node_mask_transform(node: Node) -> QtGui.QTransform:
+    """Returns the combined affine transform from visible child transform masks."""
+    transform = QtGui.QTransform()
+    for child in node.childNodes():
+        if child.type() == "transformmask" and child.visible():
+            transform *= child.finalAffineTransform()
+    return transform
+
+
+def _document_position(
+    bounds: QtCore.QRect, acc_transform: QtGui.QTransform
+) -> tuple[float, float]:
+    """
+    Maps a node's visual bounds through ancestor transforms, returning the
+    axis-aligned bounding-box top-left that the resulting sprite occupies in
+    document coordinates.
+    """
+    if acc_transform.isIdentity():
+        return float(bounds.x()), float(bounds.y())
+
+    mapped = acc_transform.mapRect(bounds)
+    return float(mapped.x()), float(mapped.y())
 
 
 @dataclass
@@ -138,26 +159,37 @@ class SceneBuilder:
             if node_uid(child) in self._excluded:
                 continue
 
-            obj = self._build_object(child, (), len(objects), 1.0)
+            obj = self._build_object(child, (), len(objects), 1.0, QtGui.QTransform())
             if obj is not None:
                 objects.append(obj)
 
         return objects
 
     def _build_children(
-        self, parent: Node, path: tuple[str, ...], opacity: float
+        self,
+        parent: Node,
+        path: tuple[str, ...],
+        opacity: float,
+        acc_transform: QtGui.QTransform,
     ) -> list[SceneObject]:
         objects = []
 
         for child in parent.childNodes():
-            obj = self._build_object(child, path, len(objects), opacity)
+            obj = self._build_object(
+                child, path, len(objects), opacity, acc_transform
+            )
             if obj is not None:
                 objects.append(obj)
 
         return objects
 
     def _build_object(
-        self, node: Node, path: tuple[str, ...], z: int, opacity: float
+        self,
+        node: Node,
+        path: tuple[str, ...],
+        z: int,
+        opacity: float,
+        acc_transform: QtGui.QTransform,
     ) -> Optional[SceneObject]:
         if not is_exportable(node):
             return None
@@ -171,25 +203,48 @@ class SceneBuilder:
 
         opacity *= node.opacity() / 255.0
 
+        own_mask = _node_mask_transform(node)
+        child_acc = acc_transform * own_mask
+
         if node_type == "grouplayer":
-            children = self._build_children(node, path + (name,), opacity)
+            children = self._build_children(
+                node, path + (name,), opacity, child_acc
+            )
             if not children:
                 return None
 
-            obj = SceneObject(name, z, (bounds.x(), bounds.y()), children=children)
+            pos_x, pos_y = _document_position(bounds, acc_transform)
+            obj = SceneObject(
+                name, z, (round(pos_x), round(pos_y)), children=children,
+            )
 
             pivot = self._find_pivot(node)
             if pivot is not None:
-                obj.pivot_canvas = pivot
-                obj.pivot_local = (pivot[0] - bounds.x(), pivot[1] - bounds.y())
+                pivot_own_visual = own_mask.map(
+                    QtCore.QPointF(pivot[0], pivot[1])
+                )
+                pivot_acc_visual = acc_transform.map(pivot_own_visual)
+                obj.pivot_canvas = (
+                    round(pivot_acc_visual.x()),
+                    round(pivot_acc_visual.y()),
+                )
+                obj.pivot_local = (
+                    round(pivot_own_visual.x() - bounds.x()),
+                    round(pivot_own_visual.y() - bounds.y()),
+                )
 
             return obj
 
         if bounds.isEmpty():
             return None
 
-        frame = self._register_sprite(node, bounds, path + (name,), opacity)
-        return SceneObject(name, z, (bounds.x(), bounds.y()), frame=frame)
+        frame = self._register_sprite(
+            node, bounds, path + (name,), opacity, acc_transform
+        )
+        pos_x, pos_y = _document_position(bounds, acc_transform)
+        return SceneObject(
+            name, z, (round(pos_x), round(pos_y)), frame=frame,
+        )
 
     def _find_pivot(self, group: Node) -> Optional[tuple[int, int]]:
         """
@@ -214,11 +269,17 @@ class SceneBuilder:
         return None
 
     def _register_sprite(
-        self, node: Node, bounds: QtCore.QRect, path: tuple[str, ...], opacity: float
+        self,
+        node: Node,
+        bounds: QtCore.QRect,
+        path: tuple[str, ...],
+        opacity: float,
+        acc_transform: QtGui.QTransform,
     ) -> str:
         """
-        Extracts the node's composited image and registers it for packing.
-        Returns the frame key, reusing an existing one for identical images.
+        Extracts the node's composited image, applies ancestor transforms,
+        and registers it for packing. Returns the frame key, reusing an
+        existing one for identical images.
         """
 
         raw = bytes(
@@ -227,13 +288,32 @@ class SceneBuilder:
             )
         )
 
-        dedup_key = (bounds.width(), bounds.height(), round(opacity * 1000), raw)
+        image = _to_image(raw, bounds.width(), bounds.height(), opacity)
+
+        if not acc_transform.isIdentity():
+            image = image.transformed(
+                acc_transform, QtCore.Qt.TransformationMode.SmoothTransformation
+            )
+            tx_key = (
+                acc_transform.m11(), acc_transform.m12(), acc_transform.m13(),
+                acc_transform.m21(), acc_transform.m22(), acc_transform.m23(),
+                acc_transform.m31(), acc_transform.m32(), acc_transform.m33(),
+            )
+        else:
+            tx_key = None
+
+        dedup_key = (
+            image.width(),
+            image.height(),
+            round(opacity * 1000),
+            raw,
+            tx_key,
+        )
         existing = self._dedup.get(dedup_key)
         if existing is not None:
             return existing
 
         key = self._unique_key("/".join(path))
-        image = _to_image(raw, bounds.width(), bounds.height(), opacity)
 
         self.sprites.append(Sprite(key, image))
         self._frame_keys.add(key)
